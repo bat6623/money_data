@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>個人資產統計 | Asset Stats</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+    <!-- Remix Icon -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <!-- PapaParse -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="glass-header">
+            <div class="header-content">
+                <h1>資產總覽</h1>
+                <div class="subtitle-row">
+                    <select id="yearSelect" class="year-select">
+                        <option value="2026">2026 年度</option>
+                        <option value="2025">2025 年度</option>
+                        <option value="2024">2024 年度</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <a href="us.html" class="refresh-btn"
+                    style="text-decoration: none; color: var(--text-primary); display: flex; align-items: center; justify-content: center;">
+                    <i class="ri-money-dollar-circle-line"></i>
+                </a>
+                <div class="refresh-btn" id="refreshBtn">
+                    <i class="ri-refresh-line"></i>
+                </div>
+            </div>
+        </header>
+
+        <main class="dashboard">
+            <!-- 總資產卡片 -->
+            <section class="card summary-card glass-panel" id="totalAssetCard">
+                <div class="card-icon"><i class="ri-wallet-3-line"></i></div>
+                <div class="card-info">
+                    <h2>所有年度結算金額</h2>
+                    <p class="amount" id="totalAssetValue">載入中...</p>
+                    <span class="trend positive" id="assetTrend">
+                        <i class="ri-arrow-up-line"></i> <span id="trendValue">--%</span>
+                    </span>
+                </div>
+            </section>
+
+            <!-- 資產分佈子卡片 -->
+            <section class="breakdown-grid"
+                style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 24px;">
+                <!-- 台股 -->
+                <div class="glass-panel"
+                    style="padding: 16px; display: flex; flex-direction: column; align-items: center;">
+                    <h3 style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px;">🇹🇼 台股現值</h3>
+                    <p class="metric-value" id="twAssetValue" style="font-size: 1.1rem;">--</p>
+                </div>
+            </section>
+
+            <!-- 詳細數據分區 -->
+            <div class="metrics-container"
+                style="display: flex; flex-direction: column; gap: 24px; margin-bottom: 24px;">
+
+                <!-- Section 1: 核心獲利 -->
+                <section>
+                    <h3 class="section-title"
+                        style="margin-bottom: 12px; font-size: 0.9rem; opacity: 0.8; border-left: 3px solid var(--accent-color); padding-left: 8px;">
+                        核心獲利指標</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px;">
+                        <!-- 實際總損益 (Highlight) -->
+                        <div class="metric-card glass-panel highlight">
+                            <h3>實際總賺賠</h3>
+                            <div class="tooltip-container">
+                                <p class="metric-value gain" id="netProfitValue">--</p>
+                                <span class="tooltip-text">現值+配息-成本-手續費</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 2: 持股現況 -->
+                <section>
+                    <h3 class="section-title"
+                        style="margin-bottom: 12px; font-size: 0.9rem; opacity: 0.8; border-left: 3px solid var(--text-secondary); padding-left: 8px;">
+                        持股現況</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px;">
+                        <!-- 總投入成本 -->
+                        <div class="metric-card glass-panel">
+                            <h3>總投入成本</h3>
+                            <p class="metric-value neutral" id="totalCostValue">--</p>
+                        </div>
+                        <!-- 未實現損益 -->
+                        <div class="metric-card glass-panel">
+                            <h3>未實現損益</h3>
+                            <p class="metric-value gain" id="unrealizedValue">--</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 3: 已實現與配息 -->
+                <section>
+                    <h3 class="section-title"
+                        style="margin-bottom: 12px; font-size: 0.9rem; opacity: 0.8; border-left: 3px solid var(--text-secondary); padding-left: 8px;">
+                        已實現與配息</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px;">
+                        <!-- 已實現損益 -->
+                        <div class="metric-card glass-panel">
+                            <h3>已實現損益</h3>
+                            <p class="metric-value gain" id="realizedValue">--</p>
+                        </div>
+                        <!-- 歷年總配息 -->
+                        <div class="metric-card glass-panel">
+                            <h3>歷年總配息</h3>
+                            <p class="metric-value gain" id="dividendValue">--</p>
+                        </div>
+                        <!-- 交易成本 -->
+                        <div class="metric-card glass-panel">
+                            <h3>交易成本</h3>
+                            <p class="metric-value expense" id="feeValue">--</p>
+                        </div>
+                        <!-- 總獲利 (Hidden or Secondary) -->
+                        <div class="metric-card glass-panel" style="display: none;">
+                            <h3>年度總獲利</h3>
+                            <p class="metric-value gain" id="totalProfitValue">--</p>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+            <!-- 圖表區域 -->
+            <section class="card chart-card glass-panel">
+                <h3>資產趨勢</h3>
+                <div class="chart-container">
+                    <canvas id="assetChart"></canvas>
+                </div>
+            </section>
+
+            <!-- 股息月曆 (New) -->
+            <!-- 股息月曆 (New) -->
+            <section class="card glass-panel" style="margin-top: 24px;">
+                <h2 style="margin-bottom: 16px;">股息月曆</h2>
+                <div style="height: 300px; position: relative;">
+                    <canvas id="dividendChart"></canvas>
+                </div>
+            </section>
+
+            <!-- 持股清單 -->
+            <section class="card list-card glass-panel">
+                <h3>持股清單</h3>
+                <div class="table-container">
+                    <table class="stock-table">
+                        <thead>
+                            <tr>
+                                <th>名稱</th>
+                                <th class="text-right">現值</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockListBody">
+                            <!-- JS 生成列表項目 -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
