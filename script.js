@@ -104,11 +104,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Math.abs(swipeDistance) < minSwipeDistance) return;
 
         if (swipeDistance < 0) {
-            // Swipe Left (<--) -> Next Item -> Older Year
-            changeYear('older');
-        } else {
-            // Swipe Right (-->) -> Prev Item -> Newer Year
+            // Swipe Left (<--) -> Newer Year
             changeYear('newer');
+        } else {
+            // Swipe Right (-->) -> Older Year
+            changeYear('older');
         }
     }
 
@@ -128,10 +128,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const dashboard = document.querySelector('.dashboard');
 
             // 1. Determine Animation Classes
-            // Swipe Left (Go to Older) -> Content moves Left (Exit), New comes from Right
-            // Swipe Right (Go to Newer) -> Content moves Right (Exit), New comes from Left
-            const exitClass = direction === 'older' ? 'anim-slide-out-left' : 'anim-slide-out-right';
-            const enterClass = direction === 'older' ? 'anim-slide-in-right' : 'anim-slide-in-left';
+            // Swipe Left -> Move Current Left (Exit), New comes from Right -> Newer Year
+            // Swipe Right -> Move Current Right (Exit), New comes from Left -> Older Year
+
+            // direction 'newer' (triggered by Swipe Left) -> Slide Out Left
+            // direction 'older' (triggered by Swipe Right) -> Slide Out Right
+            const exitClass = direction === 'newer' ? 'anim-slide-out-left' : 'anim-slide-out-right';
+            const enterClass = direction === 'newer' ? 'anim-slide-in-right' : 'anim-slide-in-left';
 
             // 2. Play Exit Animation
             dashboard.classList.add(exitClass);
