@@ -38,15 +38,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsBtn = document.getElementById('settingsBtn');
     if (settingsBtn) {
         settingsBtn.addEventListener('click', () => {
-            if (confirm('是否強制更新應用程式版本？\n這將清除快取並重新載入，以確保您看到最新內容。')) {
-                forceUpdateApp();
-            }
+            // 直接執行不彈窗
+            forceUpdateApp();
         });
     }
 
     async function forceUpdateApp() {
         const statusEl = document.getElementById('totalAssetValue');
-        if (statusEl) statusEl.textContent = '清除快取中...';
+        if (statusEl) statusEl.textContent = '版本更新中...';
 
         try {
             // 1. Unregister Service Workers
@@ -66,11 +65,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // 3. Reload Page
-            alert('快取已清除，正在重新載入最新版本...');
             window.location.reload(true);
         } catch (error) {
             console.error('Force update failed:', error);
-            alert('更新失敗，請手動重整頁面。');
+            // Fail silently or just log
+            if (statusEl) statusEl.textContent = '更新失敗';
         }
     }
 
