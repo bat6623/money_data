@@ -33,6 +33,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
         fetchData(yearSelect.value);
     });
+
+    // --- Swipe Support ---
+    let touchStartX = 0;
+    let touchEndX = 0;
+    const minSwipeDistance = 50;
+
+    document.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    document.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, { passive: true });
+
+    function handleSwipe() {
+        const swipeDistance = touchEndX - touchStartX;
+
+        if (Math.abs(swipeDistance) < minSwipeDistance) return;
+
+        if (swipeDistance < 0) {
+            // Swipe Left (Negative) -> Switch to Newer Year
+            changeYear('newer');
+        } else {
+            // Swipe Right (Positive) -> Switch to Older Year
+            changeYear('older');
+        }
+    }
+
+    function changeYear(direction) {
+        const currentIndex = yearSelect.selectedIndex;
+        let newIndex = currentIndex;
+
+        if (direction === 'newer') {
+            // Newer years are at lower indices (e.g. Index 0 is 2026, Index 1 is 2025)
+            if (currentIndex > 0) newIndex--;
+        } else {
+            // Older years are at higher indices
+            if (currentIndex < yearSelect.options.length - 1) newIndex++;
+        }
+
+        if (newIndex !== currentIndex) {
+            yearSelect.selectedIndex = newIndex;
+            yearSelect.dispatchEvent(new Event('change'));
+
+            // Optional: Visual Feedback
+            yearSelect.style.transition = 'transform 0.2s ease';
+            yearSelect.style.transform = 'scale(1.1)';
+            setTimeout(() => yearSelect.style.transform = 'scale(1)', 200);
+        }
+    }
 });
 
 function fetchData(year) {
