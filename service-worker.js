@@ -1,4 +1,4 @@
-const CACHE_NAME = 'asset-stats-v1';
+const CACHE_NAME = 'asset-stats-v3';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
@@ -6,6 +6,7 @@ const ASSETS_TO_CACHE = [
     './styles.css',
     './script.js',
     './icon.svg',
+    './manifest.json',
     'https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css',
     'https://cdn.jsdelivr.net/npm/chart.js',
     'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0',
@@ -14,6 +15,7 @@ const ASSETS_TO_CACHE = [
 
 // Install Event: Cache core assets
 self.addEventListener('install', (event) => {
+    self.skipWaiting(); // Force activation
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
@@ -34,17 +36,18 @@ self.addEventListener('activate', (event) => {
                     }
                 })
             );
-        })
+        }).then(() => self.clients.claim()) // Take control immediately
     );
 });
 
 // Fetch Event: Stale-While-Revalidate Strategy
 self.addEventListener('fetch', (event) => {
-    // Skip cross-origin requests like Google Sheets CSV if needed, 
-    // but Stale-While-Revalidate is generally safe for CORS if opaque response is okay.
-    // However, for API data (CSV), we might prefer Network First.
-
     const url = new URL(event.request.url);
+
+    // Ignore Chrome Extensions and non-http(s) schemes
+    if (!url.protocol.startsWith('http')) {
+        return;
+    }
 
     // Dynamic CSV Data -> Network First (Don't cache or simple fallback)
     if (url.href.includes('docs.google.com') || url.href.includes('output=csv')) {

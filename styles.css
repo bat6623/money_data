@@ -355,3 +355,58 @@ body {
     visibility: visible;
     opacity: 1;
 }
+
+/* Page Transition Animations */
+@keyframes slideOutLeft {
+    to {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+}
+
+@keyframes slideOutRight {
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInFromLeft {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.anim-slide-out-left {
+    animation: slideOutLeft 0.3s ease-in forwards;
+}
+
+.anim-slide-out-right {
+    animation: slideOutRight 0.3s ease-in forwards;
+}
+
+.anim-slide-in-right {
+    animation: slideInFromRight 0.3s ease-out forwards;
+}
+
+.anim-slide-in-left {
+    animation: slideInFromLeft 0.3s ease-out forwards;
+}

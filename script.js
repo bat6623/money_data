@@ -34,31 +34,82 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchData(yearSelect.value);
     });
 
-    // --- Swipe Support ---
-    let touchStartX = 0;
-    let touchEndX = 0;
+    // Settings / Force Update
+    const settingsBtn = document.getElementById('settingsBtn');
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            if (confirm('是否強制更新應用程式版本？\n這將清除快取並重新載入，以確保您看到最新內容。')) {
+                forceUpdateApp();
+            }
+        });
+    }
+
+    async function forceUpdateApp() {
+        const statusEl = document.getElementById('totalAssetValue');
+        if (statusEl) statusEl.textContent = '清除快取中...';
+
+        try {
+            // 1. Unregister Service Workers
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const registration of registrations) {
+                    await registration.unregister();
+                }
+            }
+
+            // 2. Clear All Caches
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                await Promise.all(
+                    cacheNames.map(name => caches.delete(name))
+                );
+            }
+
+            // 3. Reload Page
+            alert('快取已清除，正在重新載入最新版本...');
+            window.location.reload(true);
+        } catch (error) {
+            console.error('Force update failed:', error);
+            alert('更新失敗，請手動重整頁面。');
+        }
+    }
+
+    // --- Swipe Support (Touch & Mouse) ---
+    let startX = 0;
+    let endX = 0;
     const minSwipeDistance = 50;
 
+    // Touch Events
     document.addEventListener('touchstart', e => {
-        touchStartX = e.changedTouches[0].screenX;
+        startX = e.changedTouches[0].screenX;
     }, { passive: true });
 
     document.addEventListener('touchend', e => {
-        touchEndX = e.changedTouches[0].screenX;
+        endX = e.changedTouches[0].screenX;
         handleSwipe();
     }, { passive: true });
 
+    // Mouse Events for Desktop Testing
+    document.addEventListener('mousedown', e => {
+        startX = e.screenX;
+    });
+
+    document.addEventListener('mouseup', e => {
+        endX = e.screenX;
+        handleSwipe();
+    });
+
     function handleSwipe() {
-        const swipeDistance = touchEndX - touchStartX;
+        const swipeDistance = endX - startX;
 
         if (Math.abs(swipeDistance) < minSwipeDistance) return;
 
         if (swipeDistance < 0) {
-            // Swipe Left (Negative) -> Switch to Newer Year
-            changeYear('newer');
-        } else {
-            // Swipe Right (Positive) -> Switch to Older Year
+            // Swipe Left (<--) -> Next Item -> Older Year
             changeYear('older');
+        } else {
+            // Swipe Right (-->) -> Prev Item -> Newer Year
+            changeYear('newer');
         }
     }
 
@@ -75,13 +126,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (newIndex !== currentIndex) {
-            yearSelect.selectedIndex = newIndex;
-            yearSelect.dispatchEvent(new Event('change'));
+            const dashboard = document.querySelector('.dashboard');
 
-            // Optional: Visual Feedback
-            yearSelect.style.transition = 'transform 0.2s ease';
-            yearSelect.style.transform = 'scale(1.1)';
-            setTimeout(() => yearSelect.style.transform = 'scale(1)', 200);
+            // 1. Determine Animation Classes
+            // Swipe Left (Go to Older) -> Content moves Left (Exit), New comes from Right
+            // Swipe Right (Go to Newer) -> Content moves Right (Exit), New comes from Left
+            const exitClass = direction === 'older' ? 'anim-slide-out-left' : 'anim-slide-out-right';
+            const enterClass = direction === 'older' ? 'anim-slide-in-right' : 'anim-slide-in-left';
+
+            // 2. Play Exit Animation
+            dashboard.classList.add(exitClass);
+
+            // 3. Wait for Exit to finish
+            setTimeout(() => {
+                // Change Data
+                yearSelect.selectedIndex = newIndex;
+                yearSelect.dispatchEvent(new Event('change'));
+
+                // Reset Class and Add Enter Animation
+                dashboard.classList.remove(exitClass);
+                dashboard.classList.add(enterClass);
+
+                // 4. Clean up Enter Class after animation
+                setTimeout(() => {
+                    dashboard.classList.remove(enterClass);
+                }, 300); // 300ms matches CSS duration
+
+            }, 300);
         }
     }
 });
@@ -329,6 +400,12 @@ function processData(rows) {
             }
             return false;
         });
+
+        if (candidates.length === 0) {
+            console.warn(`Metric Not Found: ${keyword}`);
+        } else {
+            console.log(`Metric Candidates for "${keyword}":`, candidates.map(c => c.slice(0, 3)));
+        }
 
         if (isUSPage) {
             targetRow = candidates.find(r => r.join('').includes('美股'));
