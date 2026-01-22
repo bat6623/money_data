@@ -473,7 +473,7 @@ function processData(rows) {
     updateMetric('realizedValue', realized, false, false, currencyFormatter);
     updateMetric('dividendValue', dividends, true, false, currencyFormatter);
     updateMetric('feeValue', fees, false, true, currencyFormatter);
-    // 5. 年度總獲利 (Modified: Just a backup total profit if needed, but we focus on Net Profit now)
+    // 5. 已實現總損益 (Realized P/L + Dividends)
     const totalProfit = realized + dividends;
     updateMetric('totalProfitValue', totalProfit, true, false, currencyFormatter);
 
