@@ -303,6 +303,33 @@ function processData(rows) {
     let lastTW = twData.length > 0 ? twData[twData.length - 1] : 0;
     let lastUS = usData.length > 0 ? usData[usData.length - 1] : 0;
 
+    // 找出最新有數據更新的股票月份索引
+    let lastDataIndex = -1;
+    for (let i = aggregatedPoints.length - 1; i >= 0; i--) {
+        if (aggregatedPoints[i] > 0) {
+            lastDataIndex = i;
+            break;
+        }
+    }
+
+    // 防護：若沒能從總現值計算出最新月份，掃描月份欄位找到最新有數據的月份
+    if (lastDataIndex === -1) {
+        for (let j = monthIndices.length - 1; j >= 0; j--) {
+            const colIdx = monthIndices[j];
+            let monthHasVal = false;
+            for (let r = 0; r < rows.length; r++) {
+                if (parseCurrency(rows[r][colIdx]) > 0) {
+                    monthHasVal = true;
+                    break;
+                }
+            }
+            if (monthHasVal) {
+                lastDataIndex = j;
+                break;
+            }
+        }
+    }
+
     // 5. 更新 UI
     if (!hasData) {
         document.getElementById('totalAssetValue').textContent = isUSPage ? '$0.00' : '$0';
@@ -566,8 +593,10 @@ function processData(rows) {
     // BUT, usually US dividends are reinvested or handling is different.
     // Let's stick to the current 'dividends' variable but be aware.
 
-    const currentMarketValue = lastValidValue;
-    const netProfit = currentMarketValue + dividends - totalCost - fees;
+    // 7. 實際總損益 (Net Profit)
+    // 公式: 已實現損益 + 股息 - 交易成本 (排除未實現)
+    // 這代表實際已落袋的總報酬。
+    const netProfit = realized + dividends - fees;
 
     updateMetric('netProfitValue', netProfit, true, false, currencyFormatter);
 
@@ -713,8 +742,8 @@ function processData(rows) {
     // Chart
     renderChart(labels, dataPoints, isUSPage);
 
-    // Stock List
-    renderStockList(rows, headerRowIndex, monthIndices, isUSPage);
+    // Stock List (傳入最新股票月份索引 lastDataIndex)
+    renderStockList(rows, headerRowIndex, monthIndices, isUSPage, lastDataIndex);
 }
 
 // --- Chart Rendering Functions ---
@@ -841,7 +870,7 @@ function renderDividendChart(labels, stockDividends, formatter) {
     });
 }
 
-function renderStockList(rows, headerRowIndex, monthIndices, isUSPage) {
+function renderStockList(rows, headerRowIndex, monthIndices, isUSPage, lastDataIndex = -1) {
     const stockListBody = document.getElementById('stockListBody');
     if (!stockListBody) return;
     stockListBody.innerHTML = '';
@@ -894,18 +923,6 @@ function renderStockList(rows, headerRowIndex, monthIndices, isUSPage) {
             }
         }
 
-        // US Detection
-        // Usually US stocks have no chinese name or specific patterns, OR are in the US section.
-        // We can check if the row has '美股' earlier or just rely on name format?
-        // Or check if the value is small (USD) vs Large (TWD)? Unreliable.
-        // Let's assume if it is in a block that had '美股' header?
-        // Simplify: Check if name is English-like or if row indicates.
-        // Actually, the AssetRows detection used '美股' keyword.
-        // But individual stock rows might not have it.
-        // Let's look at the stocks.
-        // If we are on US page, we ONLY want US stocks.
-        // If we are on Main page, we want All (or TW?).
-
         // Filter
         if (isUSPage && !isUSStock) isStock = false;
 
@@ -914,19 +931,20 @@ function renderStockList(rows, headerRowIndex, monthIndices, isUSPage) {
 
         if (isStock && stockName) {
             let currentValue = 0;
-            // Get Value
-            for (let j = monthIndices.length - 1; j >= 0; j--) {
-                const val = parseCurrency(row[monthIndices[j]]);
-                if (val > 0) { currentValue = val; break; }
-            }
-            if (currentValue === 0) { // Fallback
-                for (let k = 4; k < row.length; k++) {
-                    const v = parseCurrency(row[k]);
-                    if (v > 0) { currentValue = v; break; }
-                    if (k > 20) break;
+
+            if (lastDataIndex >= 0 && lastDataIndex < monthIndices.length) {
+                // 僅讀取最新股票月份的數據，若該月份已賣出歸零 (0)，則不往前追溯歷史舊值
+                const colIdx = monthIndices[lastDataIndex];
+                currentValue = parseCurrency(row[colIdx]);
+            } else {
+                // Fallback: 若無法計算出最新月份，才從最後一月往前搜尋
+                for (let j = monthIndices.length - 1; j >= 0; j--) {
+                    const val = parseCurrency(row[monthIndices[j]]);
+                    if (val > 0) { currentValue = val; break; }
                 }
             }
 
+            // 只有最新股票月份持股現值 > 0 的股票才計入並顯示
             if (currentValue > 0) {
                 stocks.push({
                     name: stockName,
